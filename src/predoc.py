@@ -82,6 +82,26 @@ class PredocClient:
         data = body.get("data", body) if isinstance(body, dict) else {}
         return self._to_attachment(data)
 
+    def embedding(self, text: str) -> list[float]:
+        url = f"{self.config.url.rstrip('/')}/embedding"
+        payload = {"text": text}
+
+        try:
+            resp = self._session.post(url, json=payload, timeout=self.config.timeout)
+            resp.raise_for_status()
+        except requests.RequestException as e:
+            logger.error(f"Predoc 请求失败: {e}")
+            raise
+
+        try:
+            body = resp.json()
+        except ValueError as e:
+            logger.error(f"Predoc 响应非 JSON: {e}; text={resp.text[:200]}")
+            raise
+
+        data = body.get("data", body) if isinstance(body, dict) else {}
+        return data.get("embedding", [])
+
     def _to_attachment(self, data: dict[str, Any]) -> Attachment:
         """反序列化"""
         try:
@@ -105,3 +125,6 @@ if __name__ == "__main__":
         ch = att.chunks[i]
         snippet = (ch.text or "").replace("\n", " ")[:120]
         print(f"{i+1}. [doc_id={ch.doc_id}, chunk_id={ch.id}] {snippet}")
+
+    embedding = client.embedding(text="合作")
+    logger.info(f"Embedding: {embedding}")
