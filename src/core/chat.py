@@ -10,16 +10,13 @@ from src.llm import LLMClient
 from src.schema import (
     AnswerResponse,
     Attachment,
-    Author,
     ChatStatus,
     Chunk,
-    Document,
     EndResponse,
     InitResponse,
     Message,
     QueryRewriteResponse,
     SearchResponse,
-    Source,
 )
 
 from .prompt import QUERY_REWRITE_PROMPT, RAG_ANSWER_PROMPT
@@ -121,6 +118,10 @@ class RAGService(ChatInterface):
     RAG 模式的聊天业务
     """
 
+    def __init__(self, cache, llm_client=None, predoc_client=None, **_):
+        self.predoc_client = predoc_client
+        super().__init__(cache, llm_client, **_)
+
     def context_inject(self, origin_query: str, rewritten_query: str, context: list[Chunk]) -> str:
         template = f"""用户原始问题：{origin_query}\n重写问题：{rewritten_query}\n上下文信息：\n"""
         for chunk in context:
@@ -184,54 +185,11 @@ class RAGService(ChatInterface):
 
     async def search_relevant_docs(self, query: str) -> Attachment:
         """搜索相关文档"""
-        # mock request to predoc server
-        # TODO: config predoc project to make real API request
-        import json
-        import pathlib
-
-        with open(pathlib.Path(__file__).with_name("example_search_result.json")) as f:
-            example_json = json.load(f)
-
-            attachment_data = example_json.get("data", {})
-
-            docs = []
-            for doc_data in attachment_data.get("doc", []):
-                doc = Document(
-                    idx=doc_data.get("idx", 0),
-                    title=doc_data.get("title", ""),
-                    authors=[
-                        Author(
-                            name=author.get("name", ""),
-                            institution=author.get("institution", ""),
-                        )
-                        for author in doc_data.get("authors", [])
-                    ],
-                    publicationDate=doc_data.get("publicationDate", ""),
-                    language=doc_data.get("language", ""),
-                    keywords=doc_data.get("keywords", []),
-                    publisher=doc_data.get("publisher", ""),
-                    journal=doc_data.get("journal", ""),
-                )
-                docs.append(doc)
-
-            chunks = []
-            for chunk_data in attachment_data.get("chunks", []):
-                chunk = Chunk(
-                    id=chunk_data.get("id", 0),
-                    doc_id=chunk_data.get("doc_id", 0),
-                    text=chunk_data.get("text", ""),
-                    source=[
-                        Source(
-                            type="document",
-                            id=chunk_data.get("id", 0),
-                            url=chunk_data.get("url", ""),
-                        )
-                    ],
-                )
-                chunks.append(chunk)
-
-            attachment = Attachment(doc=docs, chunks=chunks)
-            return attachment
+        try:
+            client = self.predoc_client
+            return client.search(query, topK=10)
+        except Exception as e:
+            logger.warning(f"Predoc 搜索失败: {e}")
 
     async def query_rewrite(self, query: str) -> AsyncGenerator[str, None]:
         """对用户查询进行重写"""

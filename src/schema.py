@@ -10,8 +10,8 @@ from pydantic import BaseModel, Field
 class Author(BaseModel):
     """作者信息"""
 
-    name: str
-    institution: str
+    name: str = ""
+    institution: str = ""
 
 
 class Document(BaseModel):
@@ -19,36 +19,36 @@ class Document(BaseModel):
 
     idx: int
     title: str
-    authors: list[Author]
-    publicationDate: str
-    language: str
-    keywords: list[str]
-    publisher: str
-    journal: str
+    authors: list[Author] = Field(default_factory=list)
+    publicationDate: str = ""
+    language: str = ""
+    keywords: list[str] = Field(default_factory=list)
+    publisher: str = ""
+    journal: str = ""
 
 
 class Source(BaseModel):
     """文档来源信息"""
 
-    type: str
-    id: int
-    url: str
+    type: str = "pdf"
+    id: int = 0
+    url: str = ""
 
 
 class Chunk(BaseModel):
     """文档分块信息"""
 
-    id: int
-    doc_id: int
-    text: str
-    source: list[Source]
+    id: int = 0
+    doc_id: int = 0
+    text: str = ""
+    source: list[Source] = Field(default_factory=list)
 
 
 class Attachment(BaseModel):
     """附件信息"""
 
-    doc: list[Document]
-    chunks: list[Chunk]
+    doc: list[Document] = Field(default_factory=list)
+    chunks: list[Chunk] = Field(default_factory=list)
 
 
 class Message(BaseModel):
