@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse, StreamingResponse
+from pymongo.database import Database as MongoDatabase
 
 from src.cache import Cache
 from src.llm import LLMClient
@@ -10,6 +11,7 @@ from src.schema import Message
 
 from .chat import ChatService, RAGService
 from .dto import ChatRequest
+from .user import UserProfile, save_user_profile
 
 router = APIRouter()
 
@@ -25,9 +27,17 @@ def get_cache(request: Request) -> Cache:
     return cache
 
 
+def get_mongo(request: Request) -> MongoDatabase:
+    db = getattr(request.app.state, "mongo_db", None)
+    if db is None:
+        raise RuntimeError("Mongo is not configured on app.state.mongo_db")
+    return db
+
+
 # Avoid calling Depends(...) inside default args (ruff B008)
 CACHE_DEP = Depends(get_cache)
 QWQ_LLM_DEP = Depends(get_qwq_client)
+MONGO_DEP = Depends(get_mongo)
 
 
 @router.get("/")
@@ -88,3 +98,12 @@ async def chat_summarize(messages: list[Message], cache: Cache = CACHE_DEP):
     title = await service.generate_chat_title(query)
 
     return ApiResponse.success(data={"title": title})
+
+
+@router.post("/user/profile")
+async def create_user(user_profile: UserProfile, db: MongoDatabase = MONGO_DEP):
+    """
+    接收前端发送的用户信息，验证后存入数据库
+    """
+    user_id = save_user_profile(db, user_profile)
+    return ApiResponse.success(data={"user_id": user_id})
