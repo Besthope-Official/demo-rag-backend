@@ -58,13 +58,15 @@ class PredocClient:
         self.config = config or PredocConfig()
         self._session = requests.Session()
 
-    def search(self, query: str, topK: int = 10) -> Attachment:
+    def search(
+        self, query: str, topK: int = 10, collection: str = "default_collection"
+    ) -> Attachment:
         """检索知识库，得到相关文档并返回附件"""
         if not query:
             raise ValueError("query 不能为空")
 
         url = f"{self.config.url.rstrip('/')}/retrieval"
-        payload = {"query": query, "topK": topK}
+        payload = {"query": query, "topK": topK, "collection": collection}
 
         try:
             resp = self._session.post(url, json=payload, timeout=self.config.timeout)
