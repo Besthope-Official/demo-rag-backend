@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Literal, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class Author(BaseModel):
@@ -13,12 +13,17 @@ class Author(BaseModel):
     name: str = ""
     institution: str = ""
 
+    @field_validator("name", "institution", mode="before")
+    @classmethod
+    def _none_to_empty_str(cls, v: Any):
+        return "" if v is None else v
+
 
 class Document(BaseModel):
     """文档信息"""
 
-    idx: int
-    title: str
+    idx: int = 0
+    title: str = ""
     authors: list[Author] = Field(default_factory=list)
     publicationDate: str = ""
     language: str = ""
@@ -26,13 +31,45 @@ class Document(BaseModel):
     publisher: str = ""
     journal: str = ""
 
+    @field_validator("idx", mode="before")
+    @classmethod
+    def _none_idx_to_zero(cls, v: Any):
+        return 0 if v is None else v
+
+    @field_validator(
+        "title",
+        "publicationDate",
+        "language",
+        "publisher",
+        "journal",
+        mode="before",
+    )
+    @classmethod
+    def _none_to_empty_str(cls, v: Any):
+        return "" if v is None else v
+
+    @field_validator("authors", "keywords", mode="before")
+    @classmethod
+    def _none_to_empty_list(cls, v: Any):
+        return [] if v is None else v
+
 
 class Source(BaseModel):
     """文档来源信息"""
 
-    type: str = "pdf"
+    type: str = "document"
     id: int = 0
     url: str = ""
+
+    @field_validator("id", mode="before")
+    @classmethod
+    def _none_id_to_zero(cls, v: Any):
+        return 0 if v is None else v
+
+    @field_validator("type", "url", mode="before")
+    @classmethod
+    def _none_to_empty_str(cls, v: Any):
+        return "" if v is None else v
 
 
 class Chunk(BaseModel):
@@ -43,12 +80,32 @@ class Chunk(BaseModel):
     text: str = ""
     source: list[Source] = Field(default_factory=list)
 
+    @field_validator("id", "doc_id", mode="before")
+    @classmethod
+    def _none_to_zero(cls, v: Any):
+        return 0 if v is None else v
+
+    @field_validator("text", mode="before")
+    @classmethod
+    def _none_text_to_empty(cls, v: Any):
+        return "" if v is None else v
+
+    @field_validator("source", mode="before")
+    @classmethod
+    def _none_source_to_list(cls, v: Any):
+        return [] if v is None else v
+
 
 class Attachment(BaseModel):
     """附件信息"""
 
     doc: list[Document] = Field(default_factory=list)
     chunks: list[Chunk] = Field(default_factory=list)
+
+    @field_validator("doc", "chunks", mode="before")
+    @classmethod
+    def _none_to_empty_list(cls, v: Any):
+        return [] if v is None else v
 
 
 class Message(BaseModel):

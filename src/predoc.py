@@ -118,7 +118,7 @@ if __name__ == "__main__":
     logger.info(f"Predoc Config: url={cfg.url}, timeout={cfg.timeout}s")
 
     client = PredocClient(cfg)
-    att = client.search(query="合作", topK=10)
+    att = client.search(query="合作", topK=10, collection="test")
 
     logger.info(f"retrieved {len(att.doc)} docs, {len(att.chunks)} chunks")
 
