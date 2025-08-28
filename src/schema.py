@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Literal, Union
+from typing import Any, Literal, Union,Optional
 
 from pydantic import BaseModel, Field
 
@@ -167,3 +167,13 @@ class EndResponse(ChatResponse):
         else:  # ChatStatus
             end_reason = status.value
         return cls(data=EndData(end_reason=end_reason))
+
+class UserWindow(BaseModel):
+    """用户的会话历史,之后的用户画像也可以加载这里面"""
+    window_id:list[str]
+
+class WindowInform(BaseModel):
+    """用户的会话记录"""
+    user_chat:Optional[list[str]]=[]
+    ai_chat:Optional[list[str]]=[]
+    summary:Optional[str]=""
