@@ -2,21 +2,26 @@
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse, StreamingResponse
+from pymongo.database import Database as MongoDatabase
 
 from src.cache import Cache
 from src.llm import LLMClient
+from src.predoc import PredocClient
 from src.response import ApiResponse
 from src.schema import Message
 
 from .chat import ChatService, RAGService
 from .dto import ChatRequest
-from .history import ChatHistoryService
 
 router = APIRouter()
 
 
 def get_qwq_client() -> LLMClient:
     return LLMClient()
+
+
+def get_predoc_client() -> PredocClient:
+    return PredocClient()
 
 
 def get_cache(request: Request) -> Cache:
@@ -26,9 +31,18 @@ def get_cache(request: Request) -> Cache:
     return cache
 
 
+def get_mongo(request: Request) -> MongoDatabase:
+    db = getattr(request.app.state, "mongo_db", None)
+    if db is None:
+        raise RuntimeError("Mongo is not configured on app.state.mongo_db")
+    return db
+
+
 # Avoid calling Depends(...) inside default args (ruff B008)
 CACHE_DEP = Depends(get_cache)
 QWQ_LLM_DEP = Depends(get_qwq_client)
+PREDOC_DEP = Depends(get_predoc_client)
+MONGO_DEP = Depends(get_mongo)
 
 
 @router.get("/")
@@ -41,6 +55,7 @@ async def chat_completions(
     request: ChatRequest,
     cache: Cache = CACHE_DEP,
     llm_client: LLMClient = QWQ_LLM_DEP,
+    predoc_client: PredocClient | None = PREDOC_DEP,
 ):
     """
     对话补全接口，分为 RAG 启用/关闭两类
@@ -50,7 +65,9 @@ async def chat_completions(
     """
 
     if request.rag_enable:
-        chat_service = RAGService(cache=cache, llm_client=llm_client)
+        if predoc_client is None:
+            raise Exception("Knowledge Base cannot be accessed")
+        chat_service = RAGService(cache=cache, llm_client=llm_client, predoc_client=predoc_client)
     else:
         chat_service = ChatService(cache=cache, llm_client=llm_client)
 
@@ -89,43 +106,3 @@ async def chat_summarize_1(messages: list[Message], cache: Cache = CACHE_DEP):
     title = await service.generate_chat_title(query)
 
     return ApiResponse.success(data={"title": title})
-
-# 全新加的，并且将sendText和Summary简单化，未修改之前的接口
-@router.post("/api/getChatList")
-async def get_chat_list_1(user_id: str, cache: Cache = CACHE_DEP):
-    """获取会话列表接口"""
-    service = ChatHistoryService(cache=cache)
-    chat_list = service.get_chat_list(user_id=user_id)
-    chat_list_res=[]
-    async for window_id in chat_list:
-        c.append(window_id)
-    return ApiResponse.success(data={"chat_list": chat_list_res})
-
-@router.post("/api/getChatHistory")
-async def get_chat_history_1(chat_id: str, user_id: str, cache: Cache = CACHE_DEP):
-    """获取会话历史记录接口"""
-    service = ChatHistoryService(cache=cache)
-    (user_list,ai_list) = service.get_chat_history(chat_id=chat_id, user_id=user_id)
-    return ApiResponse.success(data={"user_chat": user_list,"ai_chat":ai_list})
-
-@router.post("/api/createChat")
-async def create_chat_1(user_id: str, cache: Cache = CACHE_DEP):
-    """创建新会话接口"""
-    service = ChatHistoryService(cache=cache)
-    chat_ids = service.create_chat(user_id=user_id)
-    async for chat_id in chat_ids:
-        return ApiResponse.success(data={"chat_id": chat_id})
-
-# @router.post("/getSummary")
-# async def get_summary(chat_id: str, user_id: str, cache: Cache = CACHE_DEP):
-#     """获取会话摘要接口"""
-#     service = ChatHistoryService(cache=cache)
-#     summary = await service.get_summary(chat_id=chat_id, user_id=user_id)
-#     return ApiResponse.success(data={"summary": summary})
-
-@router.post("/sendtext")
-async def ChatHistoryService_1(user_id: str,window_id:str,text: str, cache: Cache = CACHE_DEP):
-    """发送文本消息接口"""
-    service = await ChatHistoryService(cache=cache)
-    await service.send_text(user_id=user_id,window_id=window_id, text=text)
-    return ApiResponse.success(data={"status": "success"})

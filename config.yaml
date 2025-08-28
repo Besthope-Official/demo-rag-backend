@@ -9,3 +9,10 @@ redis:
    db: 0
    password: my_password
    encoding: utf-8
+
+predoc:
+   url: http://127.0.0.1:8000
+
+mongo:
+   url: "mongodb://username:password@localhost:27017/"
+   database: "default"
