@@ -9,7 +9,7 @@ from pymongo.database import Database as MongoDatabase
 from src.database import PyObjectId
 
 
-class UserProfile(BaseModel):
+class UserBasicInfo(BaseModel):
     """用户个人资料数据模型
     既是前端传输的 DTO, 也是实际的 Data Model
     """
@@ -30,7 +30,7 @@ class UserProfile(BaseModel):
         from_attributes = True
 
 
-def save_user_profile(db: MongoDatabase, user_profile: UserProfile) -> str:
+def save_user_profile(db: MongoDatabase, user_profile: UserBasicInfo) -> str:
     """创建或更新用户资料, 更新成功返回文档 id"""
     collection = db["users"]
 

@@ -12,7 +12,7 @@ from src.schema import Message
 
 from .chat import ChatService, RAGService
 from .dto import ChatRequest
-from .user import UserProfile, save_user_profile
+from .user import UserBasicInfo, save_user_profile
 
 router = APIRouter()
 
@@ -110,7 +110,7 @@ async def chat_summarize(messages: list[Message], cache: Cache = CACHE_DEP):
 
 
 @router.post("/user/profile")
-async def create_user(user_profile: UserProfile, db: MongoDatabase = MONGO_DEP):
+async def create_user(user_profile: UserBasicInfo, db: MongoDatabase = MONGO_DEP):
     """
     接收前端发送的用户信息，验证后存入数据库
     """
