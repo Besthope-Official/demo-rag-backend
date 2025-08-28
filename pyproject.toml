@@ -63,6 +63,7 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "PLC", "PLE", "PLW"]
 ignore = [
+	"PLC0415"
 ]
 
 [tool.ruff.format]

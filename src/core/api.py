@@ -6,6 +6,7 @@ from pymongo.database import Database as MongoDatabase
 
 from src.cache import Cache
 from src.llm import LLMClient
+from src.predoc import PredocClient
 from src.response import ApiResponse
 from src.schema import Message
 
@@ -18,6 +19,10 @@ router = APIRouter()
 
 def get_qwq_client() -> LLMClient:
     return LLMClient()
+
+
+def get_predoc_client() -> PredocClient:
+    return PredocClient()
 
 
 def get_cache(request: Request) -> Cache:
@@ -37,6 +42,7 @@ def get_mongo(request: Request) -> MongoDatabase:
 # Avoid calling Depends(...) inside default args (ruff B008)
 CACHE_DEP = Depends(get_cache)
 QWQ_LLM_DEP = Depends(get_qwq_client)
+PREDOC_DEP = Depends(get_predoc_client)
 MONGO_DEP = Depends(get_mongo)
 
 
@@ -50,6 +56,7 @@ async def chat_completions(
     request: ChatRequest,
     cache: Cache = CACHE_DEP,
     llm_client: LLMClient = QWQ_LLM_DEP,
+    predoc_client: PredocClient | None = PREDOC_DEP,
 ):
     """
     对话补全接口，分为 RAG 启用/关闭两类
@@ -59,7 +66,9 @@ async def chat_completions(
     """
 
     if request.rag_enable:
-        chat_service = RAGService(cache=cache, llm_client=llm_client)
+        if predoc_client is None:
+            raise Exception("Knowledge Base cannot be accessed")
+        chat_service = RAGService(cache=cache, llm_client=llm_client, predoc_client=predoc_client)
     else:
         chat_service = ChatService(cache=cache, llm_client=llm_client)
 

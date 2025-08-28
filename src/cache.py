@@ -126,7 +126,7 @@ class RedisCache(Cache):
             raise ValueError("RedisConfig not found.")
 
         try:
-            import aioredis  # type: ignore
+            import aioredis  # pylint: disable=import-outside-toplevel
         except Exception as e:
             raise RuntimeError("aioredis not installed. Please install 'aioredis'.") from e
 
