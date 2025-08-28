@@ -30,6 +30,7 @@ dependencies = [
 	"uvicorn>=0.30.0",
 	"PyYAML>=6.0",
 	"aioredis>=2.0.1",
+	"pymongo>=4.14.1",
 ]
 
 [project.optional-dependencies]
