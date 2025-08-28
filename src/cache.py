@@ -4,7 +4,23 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional
 
 from .config import BaseConfig
-
+import json
+from src.schema import (
+    AnswerResponse,
+    Attachment,
+    Author,
+    ChatStatus,
+    Chunk,
+    Document,
+    EndResponse,
+    InitResponse,
+    Message,
+    QueryRewriteResponse,
+    SearchResponse,
+    Source,
+    UserWindow,
+    WindowInform,
+)
 
 class Cache(ABC):
     @abstractmethod
@@ -81,6 +97,36 @@ class LocalCache(Cache):
     async def close(self) -> None:
         self._store.clear()
 
+# 序列化和反序列化
+class PickleSerializer:
+    @staticmethod
+    def serialize(data: Any) -> str:
+        """序列化数据为JSON字符串"""
+        if isinstance(data, (str, int, float, bool, type(None))):
+            return str(data)
+        elif isinstance(data, (list, dict, tuple, set)):
+            return json.dumps(data)
+        elif hasattr(data, '__dict__'):  # 处理自定义对象
+            return json.dumps(data.__dict__)
+        else:
+            return json.dumps(str(data))
+    
+    @staticmethod
+    def deserialize(data: str, target_class=None) -> Any:
+        """反序列化JSON字符串"""
+        if data is None:
+            return None
+        
+        try:
+            parsed = json.loads(data)
+            if target_class and hasattr(target_class, '__dict__'):
+                # 将字典转换回对象
+                return target_class(**parsed)
+            return parsed
+        except json.JSONDecodeError:
+            return data  # 如果不是JSON，返回原始字符串
+
+
 
 class RedisConfig(BaseConfig):
     """
@@ -133,7 +179,7 @@ class RedisCache(Cache):
         url = f"redis://{self._config.host}:{self._config.port}"
         self._redis = aioredis.from_url(  # type: ignore[attr-defined]
             url,
-            password=self._config.password,
+            # password=self._config.password,
             db=self._config.db,
             encoding=self._config.encoding,
             decode_responses=True,
@@ -147,6 +193,7 @@ class RedisCache(Cache):
 
     async def set(self, key: str, value: Any, ex: int | None = None) -> None:
         redis = self._get_redis()
+        value = PickleSerializer.serialize(value)
         if ex is not None:
             await redis.set(key, value, ex=ex)
         else:
@@ -155,6 +202,7 @@ class RedisCache(Cache):
     async def get(self, key: str) -> Any:
         redis = self._get_redis()
         value = await redis.get(key)
+        value = PickleSerializer.deserialize(value,UserWindow)
         if isinstance(value, bytes):
             value = value.decode("utf-8")
         return value
@@ -177,3 +225,23 @@ class RedisCache(Cache):
             await self._redis.close()
             self._redis = None
             self._initialized = False
+
+    async def exists_new(self,key:(str,str))->bool:
+        """处理(user_id,window_id)的情况"""
+        redis=self._get_redis()
+        value=await redis.exits(key)
+        return bool(value)
+
+    async def get_new(self, key: (str,str)) -> Any:
+        redis = self._get_redis()
+        value = await redis.get(key)
+        if isinstance(value, bytes):
+            value = value.decode("utf-8")
+        return value
+
+    async def set_new(self, key: (str,str), value: Any, ex: int | None = None) -> None:
+        redis = self._get_redis()
+        if ex is not None:
+            await redis.set(key, value, ex=ex)
+        else:
+            await redis.set(key, value)

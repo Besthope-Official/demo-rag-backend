@@ -76,6 +76,35 @@ class ChatInterface(ABC):
         # TODO: use qwen3 to generate title
         return query[:10]
 
+    async def generate_new(
+        self,chat_id:str,message_id:str,messages:list[Message]|None=None
+    )->AsyncGenerator[str,None]:
+        """
+        模拟生成过程
+        """
+        return "成功"
+
+    # async def get_summary(self, chat_id: str, user_id: str) -> str | None:
+    #     """获取会话摘要"""
+    #     # TODO: use qwen3 to generate summary
+    #     return "这是一个摘要"
+    
+    # async def get_chat_list(self, user_id: str) -> list[dict]:
+    #     return []
+
+    # async def get_chat_history(self, chat_id: str, user_id: str) -> list[dict]:
+    #     return []
+
+    # async def create_chat(self, user_id: str) -> str | None:
+    #     """创建新会话"""
+    #     # TODO: use qwen3 to create chat
+    #     return "new_chat_id"
+
+    # async def send_text(self, user_id: str, text: str) -> None:
+    #     """发送文本消息"""
+    #     # TODO: use qwen3 to send text
+    #     pass
+
     @abstractmethod
     async def chat_workflow(
         self, chat_id: str, messages: list[Message] | None = None
