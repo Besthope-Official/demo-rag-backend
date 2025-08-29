@@ -131,6 +131,7 @@ class RedisCache(Cache):
             raise RuntimeError("aioredis not installed. Please install 'aioredis'.") from e
 
         url = f"redis://{self._config.host}:{self._config.port}"
+        # we will store base64(pickle(obj)) as text, so keep decode_responses=True
         self._redis = aioredis.from_url(  # type: ignore[attr-defined]
             url,
             password=self._config.password,
@@ -147,17 +148,64 @@ class RedisCache(Cache):
 
     async def set(self, key: str, value: Any, ex: int | None = None) -> None:
         redis = self._get_redis()
+        # Try pickle+base64 and store with a prefix so we can reliably detect
+        # the serialization format when reading back.
+        try:
+            import base64
+            import json  # local import
+            import pickle
+
+            payload_b64 = base64.b64encode(pickle.dumps(value)).decode("ascii")
+            payload = f"PICKLE:{payload_b64}"
+        except Exception:
+            try:
+                import json
+
+                payload_json = json.dumps(value)
+                payload = f"JSON:{payload_json}"
+            except Exception:
+                payload = f"STR:{str(value)}"
+
         if ex is not None:
-            await redis.set(key, value, ex=ex)
+            await redis.set(key, payload, ex=ex)
         else:
-            await redis.set(key, value)
+            await redis.set(key, payload)
 
     async def get(self, key: str) -> Any:
         redis = self._get_redis()
         value = await redis.get(key)
-        if isinstance(value, bytes):
-            value = value.decode("utf-8")
-        return value
+        # value is expected to be a str when decode_responses=True
+        if value is None:
+            return None
+
+        # New-format: check prefix
+        try:
+            import base64
+            import json  # local import
+            import pickle
+
+            if isinstance(value, str):
+                if value.startswith("PICKLE:"):
+                    b = base64.b64decode(value[len("PICKLE:") :])
+                    return pickle.loads(b)
+                if value.startswith("JSON:"):
+                    return json.loads(value[len("JSON:") :])
+                if value.startswith("STR:"):
+                    return value[len("STR:") :]
+
+            # Legacy/unknown format: best-effort
+            try:
+                raw = base64.b64decode(value)
+                return pickle.loads(raw)
+            except Exception:
+                pass
+
+            try:
+                return json.loads(value)
+            except Exception:
+                return value
+        except Exception:
+            return value
 
     async def exists(self, key: str) -> bool:
         redis = self._get_redis()

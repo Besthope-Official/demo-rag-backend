@@ -1,3 +1,27 @@
+"""
+一个测评可包含多个题目（选择题、填空题）-> 出卷子
+
+题目在后端用 id 标记，对应前端的一个静态页面，
+
+例如：风险态度的测评，对应收益情景、损失情景的子问题，
+每个问题对应一个页面（如 risk-q1.html），必须做完全部问题后才能得到报告
+
+答案的形式可以是:
+
+单选、多选
+填空、单题多空
+
+答案的这些字段在前端收集，返回后端
+
+每个问题会预设几组计算规则: 例如，选择A的个数，根据count，预设几组数值映射标签:
+
+[0,5] -> 风险厌恶
+6 -> 风险中性
+[7,10] -> 风险偏好
+
+另外的例子，填空题里填写的数值，如分配的 money，根据规则映射到标签空间上。
+"""
+
 from pydantic import BaseModel, Field, field_validator
 
 from src.database import PyObjectId
@@ -46,6 +70,7 @@ class QuestionResponse(BaseModel):
 
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id", description="主键ID")
     question_id: str = Field(..., description="题目 ID")
+
     answer: ChoiceAnswer | TextAnswer | None = Field(
         default=None, description="答案，可为选择题、填空题或空，外键关联ChoiceAnswer/TextAnswer"
     )
@@ -59,12 +84,15 @@ class AssessmentResponse(BaseModel):
 
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id", description="主键ID")
     assessment_id: str = Field(..., description="测评 ID")
+
+    # 真的可以允许未完成吗
     questions: list[QuestionResponse] = Field(
         default_factory=list,
         description="多道题目答案列表，允许部分未完成，外键关联QuestionResponse",
     )
 
 
+# TODO
 class LabelSearchResult(BaseModel):
     """检索结果模型，包含 Attachment 和标签列表。"""
 
@@ -81,6 +109,7 @@ class AssessmentLabelMapping(BaseModel):
 
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id", description="主键ID")
     assessment_id: str = Field(..., description="测评 ID，外键关联AssessmentResponse.assessment_id")
+
     label_mapping: dict[str, list[str]] = Field(
         ..., description="分数范围到标签列表的映射，例如 '0-5': ['低兴趣']"
     )
@@ -94,5 +123,6 @@ class LabelExplanation(BaseModel):
 
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id", description="主键ID")
     assessment_id: str = Field(..., description="测评 ID，外键关联AssessmentResponse.assessment_id")
+
     label: str = Field(..., description="标签名称")
     explanation: str = Field(..., description="标签解释")

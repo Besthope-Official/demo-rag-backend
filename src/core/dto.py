@@ -23,6 +23,12 @@ class ChatRequest(BaseModel):
         return v
 
 
+class ChatRequestWithUser(ChatRequest):
+    """带用户信息的会话请求"""
+
+    username: str = Field(default="test")
+
+
 class UserProfileRequest(BaseModel):
     """用户画像请求模型。
 
