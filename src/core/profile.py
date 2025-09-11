@@ -68,8 +68,8 @@ class ProfileService:
             labels = await asyncio.to_thread(
                 label_processor.process_assessments, basic_info.username
             )
-            birth_date = basic_info.birth_date
-            # birth_date = datetime.strptime(basic_info.birth_date, "%Y-%m-%d")
+            # birth_date = basic_info.birth_date
+            birth_date = datetime.strptime(basic_info.birth_date, "%Y-%m-%d")
             current_date = datetime.now()
             age = (
                 current_date.year

@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
 from pymongo import MongoClient
 
-from src.cache import LocalCache, RedisCache, RedisConfig
+from src.cache import LocalCache
 from src.core.api import router as core_router
 from src.database import MongoConfig
 
@@ -15,8 +15,9 @@ from src.database import MongoConfig
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     try:
-        config = RedisConfig.from_yaml()
-        app.state.cache = RedisCache(config=config)
+        # config = RedisConfig.from_yaml()
+        app.state.cache = LocalCache()
+        # app.state.cache = RedisCache(config=config)
     except Exception as e:
         logger.warning(f"Failed to initialize RedisCache: {e}, falling back to LocalCache")
         app.state.cache = LocalCache()

@@ -111,7 +111,7 @@ class Attachment(BaseModel):
 class Message(BaseModel):
     """对话消息"""
 
-    role: Literal["user", "assistant"]
+    role: Literal["user", "assistant", "system"]
     content: str
     attachment: Attachment | None = None
 
@@ -224,3 +224,23 @@ class EndResponse(ChatResponse):
         else:  # ChatStatus
             end_reason = status.value
         return cls(data=EndData(end_reason=end_reason))
+
+
+class ChatSummary(BaseModel):
+    """聊天摘要模型，用于列表返回"""
+
+    chat_id: str
+    title: str = Field(default="无标题")
+    created_at: float
+    updated_at: float = Field(default_factory=lambda: datetime.now().timestamp())
+
+
+class ChatHistory(BaseModel):
+    """完整聊天历史模型"""
+
+    chat_id: str
+    username: str | None
+    messages: list[Message]
+    title: str = Field(default="无标题")
+    created_at: float
+    updated_at: float = Field(default_factory=lambda: datetime.now().timestamp())
